@@ -320,7 +320,7 @@ fun EmulatorScreen(
                     EditActionBar(
                         onDrag = { dx, dy -> toolbarOffset = androidx.compose.ui.unit.IntOffset(toolbarOffset.x + dx, toolbarOffset.y + dy) },
                         onSave = {
-                            ControlLayout.save(ctx, offsets.toMap(), scales.toMap())
+                            ControlLayout.save(ctx, offsets.toMap(), scales.toMap(), deviceLandscape)
                             selectedId = null; editingControls = false
                         },
                         onReset = {
