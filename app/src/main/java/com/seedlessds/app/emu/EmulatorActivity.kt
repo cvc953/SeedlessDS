@@ -130,7 +130,8 @@ class EmulatorActivity : ComponentActivity() {
 
 
         KeyMap.load(this)
-        ControlLayout.load(this)
+        val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        ControlLayout.load(this, isLandscape)
         val stateInfo = SaveStateInfo(this, userSub, gameBase, romUri, romPath)
         reconSlot.set(0)
         if (com.seedlessds.app.Recon.available) {
@@ -280,7 +281,7 @@ class EmulatorActivity : ComponentActivity() {
             2 -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
             3 -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             4 -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
-            else -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
+            else -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         }
     }
 

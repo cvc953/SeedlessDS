@@ -142,6 +142,8 @@
     <string name="common_turbo_rapid_fire">"连发（快速连击）"</string>
     <string name="common_vertical_alignment">"垂直对齐"</string>
     <string name="common_view">"查看"</string>
+    <string name="control_width">"宽度"</string>
+    <string name="control_height">"高度"</string>
     <string name="emu_emulation">"模拟"</string>
     <string name="emu_failed_to_load_rom">"无法加载 ROM"</string>
     <string name="emu_game_paused_tap_to_resume">"游戏已暂停 — 点按以继续"</string>

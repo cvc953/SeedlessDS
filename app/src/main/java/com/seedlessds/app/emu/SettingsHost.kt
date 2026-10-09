@@ -8,6 +8,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 
 @Composable
 fun SettingsHost(gameKey: String?, onExit: () -> Unit) {
@@ -21,6 +23,36 @@ fun SettingsHost(gameKey: String?, onExit: () -> Unit) {
         })
     }
     var hasPg by remember { mutableStateOf(gameKey != null && SettingsRepo.hasPerGame(ctx, gameKey)) }
+    fun applyImportedSettings(next: DsSettings) {
+        s = next
+        if (gameKey == null) SettingsRepo.saveGlobal(ctx, next, false)
+        else { SettingsRepo.savePerGame(ctx, gameKey, next); hasPg = true }
+    }
+    val themePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) CommunityThemes.install(ctx, uri)?.let { theme ->
+            applyImportedSettings(s.copy(
+                controlTheme = CommunityThemes.id(theme),
+                customBackground = if (theme.background != null || theme.backgroundPortrait != null || theme.backgroundLandscape != null) "" else s.customBackground,
+                customBackgroundPortrait = if (theme.backgroundPortrait != null) "" else s.customBackgroundPortrait,
+                customBackgroundLandscape = if (theme.backgroundLandscape != null) "" else s.customBackgroundLandscape,
+            ))
+        }
+    }
+    val backgroundPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) CommunityThemes.importBackground(ctx, uri)?.let { path ->
+            applyImportedSettings(s.copy(customBackground = path))
+        }
+    }
+    val portraitBackgroundPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) CommunityThemes.importBackground(ctx, uri)?.let { path ->
+            applyImportedSettings(s.copy(customBackgroundPortrait = path))
+        }
+    }
+    val landscapeBackgroundPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) CommunityThemes.importBackground(ctx, uri)?.let { path ->
+            applyImportedSettings(s.copy(customBackgroundLandscape = path))
+        }
+    }
 
     when (sub) {
         1 -> KeyMapperScreen { sub = 0 }
@@ -41,6 +73,10 @@ fun SettingsHost(gameKey: String?, onExit: () -> Unit) {
             else uiContext.getString(R.string.common_only_for, gameKey, if (hasPg) uiContext.getString(R.string.common_active_2) else uiContext.getString(R.string.menu_global)),
             onReset = if (gameKey == null) null
             else ({ SettingsRepo.clearPerGame(ctx, gameKey); hasPg = false }),
+            onImportTheme = { themePicker.launch("application/zip") },
+            onImportBackground = { backgroundPicker.launch("image/*") },
+            onImportBackgroundPortrait = { portraitBackgroundPicker.launch(arrayOf("image/*")) },
+            onImportBackgroundLandscape = { landscapeBackgroundPicker.launch(arrayOf("image/*")) },
         )
     }
 }

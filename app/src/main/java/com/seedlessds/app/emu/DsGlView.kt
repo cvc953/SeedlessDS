@@ -445,11 +445,11 @@ class DsGlView(context: Context) : SurfaceView(context) {
             return Pair(256f * factor, 192f * factor)
         }
 
-        private fun xform(r: FloatArray, w: Int, h: Int, sc: Float, offX: Float, offY: Float): FloatArray {
+        private fun xform(r: FloatArray, w: Int, h: Int, scX: Float, scY: Float, offX: Float, offY: Float): FloatArray {
             val cx = w / 2f; val cy = h / 2f
-            val nx = cx + (r[0] - cx) * sc + offX * w
-            val ny = cy + (r[1] - cy) * sc + offY * h
-            return floatArrayOf(nx, ny, r[2] * sc, r[3] * sc)
+            val nx = cx + (r[0] - cx) * scX + offX * w
+            val ny = cy + (r[1] - cy) * scY + offY * h
+            return floatArrayOf(nx, ny, r[2] * scX, r[3] * scY)
         }
 
         private fun rawRects(w: Int, h: Int, cfg: DsSettings): Pair<FloatArray, FloatArray?> {
@@ -513,9 +513,9 @@ class DsGlView(context: Context) : SurfaceView(context) {
             if (rawBot == null) {
                 val showingBottom = DualScreenPresets.singleBottom(cfg) != cfg.swapScreens
                 val r = if (showingBottom)
-                    xform(rawTop, w, h, ControlLayout.botScale, ControlLayout.botOffX, ControlLayout.botOffY)
+                    xform(rawTop, w, h, ControlLayout.botScaleX, ControlLayout.botScaleY, ControlLayout.botOffX, ControlLayout.botOffY)
                 else
-                    xform(rawTop, w, h, ControlLayout.topScale, ControlLayout.topOffX, ControlLayout.topOffY)
+                    xform(rawTop, w, h, ControlLayout.topScaleX, ControlLayout.topScaleY, ControlLayout.topOffX, ControlLayout.topOffY)
                 System.arraycopy(quadNdc(w, h, r), 0, geo, if (showingBottom) 12 else 0, 12)
                 topPxW = r[2].toInt(); topPxH = r[3].toInt()
                 botPxW = topPxW; botPxH = topPxH
@@ -525,8 +525,8 @@ class DsGlView(context: Context) : SurfaceView(context) {
                 var slot0 = rawTop
                 var slot1 = rawBot
                 if (cfg.swapScreens) { val t = slot0; slot0 = slot1; slot1 = t }
-                val topRect = xform(slot0, w, h, ControlLayout.topScale, ControlLayout.topOffX, ControlLayout.topOffY)
-                val botRect = xform(slot1, w, h, ControlLayout.botScale, ControlLayout.botOffX, ControlLayout.botOffY)
+                val topRect = xform(slot0, w, h, ControlLayout.topScaleX, ControlLayout.topScaleY, ControlLayout.topOffX, ControlLayout.topOffY)
+                val botRect = xform(slot1, w, h, ControlLayout.botScaleX, ControlLayout.botScaleY, ControlLayout.botOffX, ControlLayout.botOffY)
                 System.arraycopy(quadNdc(w, h, topRect), 0, geo, 0, 12)
                 System.arraycopy(quadNdc(w, h, botRect), 0, geo, 12, 12)
                 topPxW = topRect[2].toInt(); topPxH = topRect[3].toInt()
@@ -592,8 +592,8 @@ class DsGlView(context: Context) : SurfaceView(context) {
             viewW, viewH, cfg.filter, cfg.hires3D, cfg.gl16bit, cfg.internalRes, cfg.integerScale, cfg.screenLayout,
             cfg.singleScreen, cfg.singleBottom, cfg.swapScreens, cfg.dualScreenPreset, cfg.dsKeepRatio, cfg.dsIntFillW,
             cfg.dsIntFillH, cfg.dsIntAlign, cfg.dsSameSize, cfg.extDisplayType, cfg.extDisplayScreen,
-            ControlLayout.topScale, ControlLayout.topOffX, ControlLayout.topOffY,
-            ControlLayout.botScale, ControlLayout.botOffX, ControlLayout.botOffY,
+            ControlLayout.topScale, ControlLayout.topScaleX, ControlLayout.topScaleY, ControlLayout.topOffX, ControlLayout.topOffY,
+            ControlLayout.botScale, ControlLayout.botScaleX, ControlLayout.botScaleY, ControlLayout.botOffX, ControlLayout.botOffY,
             DualScreenPresets.version, ExternalSurface.attached,
         ).joinToString("|")
 
