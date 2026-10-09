@@ -49,6 +49,11 @@ data class DsSettings(
     val singleScreen: Boolean = false,
     val singleBottom: Boolean = false,
     val padStyle: Int = 0,
+    val backgroundStyle: Int = 0,
+    val customBackground: String = "",
+    val customBackgroundPortrait: String = "",
+    val customBackgroundLandscape: String = "",
+    val controlTheme: String = "",
     val screenLayout: Int = 0,
     val screenLayout2: Int = 2,
     val rotationMode: Int = 0,
@@ -257,6 +262,11 @@ object SettingsRepo {
             singleScreen = p.getBoolean("_SingleScreen", d.singleScreen),
             singleBottom = p.getBoolean("_SingleScreenBottom", d.singleBottom),
             padStyle = p.getInt("_VirtualPadStyle", d.padStyle),
+            backgroundStyle = p.getInt("_ControlBackgroundStyle", d.backgroundStyle),
+            customBackground = p.getString("_CustomControlBackground", d.customBackground) ?: d.customBackground,
+            customBackgroundPortrait = p.getString("_CustomControlBackgroundPortrait", d.customBackgroundPortrait) ?: d.customBackgroundPortrait,
+            customBackgroundLandscape = p.getString("_CustomControlBackgroundLandscape", d.customBackgroundLandscape) ?: d.customBackgroundLandscape,
+            controlTheme = p.getString("_ControlTheme", d.controlTheme) ?: d.controlTheme,
             screenLayout = p.getInt("_DefaultLayout", d.screenLayout),
             screenLayout2 = p.getInt("_ScreenLayout2", d.screenLayout2),
             rotationMode = p.getInt("_RotationMode", d.rotationMode),
@@ -354,6 +364,11 @@ object SettingsRepo {
             putBoolean("_SingleScreen", s.singleScreen)
             putBoolean("_SingleScreenBottom", s.singleBottom)
             putInt("_VirtualPadStyle", s.padStyle)
+            putInt("_ControlBackgroundStyle", s.backgroundStyle)
+            putString("_CustomControlBackground", s.customBackground)
+            putString("_CustomControlBackgroundPortrait", s.customBackgroundPortrait)
+            putString("_CustomControlBackgroundLandscape", s.customBackgroundLandscape)
+            putString("_ControlTheme", s.controlTheme)
             putInt("_DefaultLayout", s.screenLayout)
             putInt("_ScreenLayout2", s.screenLayout2)
             putInt("_RotationMode", s.rotationMode)
@@ -455,6 +470,11 @@ object SettingsRepo {
         db("_SingleScreen", s.singleScreen, b.singleScreen)
         db("_SingleScreenBottom", s.singleBottom, b.singleBottom)
         di("_VirtualPadStyle", s.padStyle, b.padStyle)
+        di("_ControlBackgroundStyle", s.backgroundStyle, b.backgroundStyle)
+        ds("_CustomControlBackground", s.customBackground, b.customBackground)
+        ds("_CustomControlBackgroundPortrait", s.customBackgroundPortrait, b.customBackgroundPortrait)
+        ds("_CustomControlBackgroundLandscape", s.customBackgroundLandscape, b.customBackgroundLandscape)
+        ds("_ControlTheme", s.controlTheme, b.controlTheme)
         di("_DefaultLayout", s.screenLayout, b.screenLayout)
         di("_ScreenLayout2", s.screenLayout2, b.screenLayout2)
         di("_RotationMode", s.rotationMode, b.rotationMode)

@@ -39,7 +39,6 @@ import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.VolumeUp
-import androidx.compose.material3.Button
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
@@ -114,7 +113,6 @@ private class SettingsOptions(private val uiContext: android.content.Context) {
     val analogStick = listOf(uiContext.getString(R.string.settings_off), uiContext.getString(R.string.settings_fps_mode), uiContext.getString(R.string.settings_stick_mode), uiContext.getString(R.string.settings_pointer_mode))
     val extDisplay = listOf(uiContext.getString(R.string.settings_clone_device), uiContext.getString(R.string.common_integer_scale), uiContext.getString(R.string.settings_fullscreen))
     val extScreen = listOf(uiContext.getString(R.string.common_top_screen), uiContext.getString(R.string.common_bottom_screen))
-    val padStyle = listOf(uiContext.getString(R.string.settings_dark), uiContext.getString(R.string.settings_light), uiContext.getString(R.string.settings_outline))
     val singleScreen = listOf(uiContext.getString(R.string.settings_off), uiContext.getString(R.string.settings_top_only), uiContext.getString(R.string.settings_bottom_only))
 }
 
@@ -145,6 +143,10 @@ fun SettingsScreen(
     subtitle: String? = null,
     onReset: (() -> Unit)? = null,
     gameRunning: Boolean = false,
+    onImportTheme: () -> Unit = {},
+    onImportBackground: () -> Unit = {},
+    onImportBackgroundPortrait: () -> Unit = {},
+    onImportBackgroundLandscape: () -> Unit = {},
 ) {
     val uiContext = androidx.compose.ui.platform.LocalContext.current
     val categories = settingsCategories(uiContext)
@@ -158,6 +160,7 @@ fun SettingsScreen(
     var confirmReset by remember { mutableStateOf(false) }
     val setS: (DsSettings) -> Unit = { s = it }
     val perGame = subtitle != null
+    androidx.compose.runtime.LaunchedEffect(initial) { s = initial }
 
     androidx.compose.runtime.LaunchedEffect(openCat, perGame) {
         if (openCat < 0) {
@@ -301,7 +304,7 @@ fun SettingsScreen(
                     when (openCat) {
                         0 -> VideoSettings(s, setS, gameRunning)
                         1 -> ScreenSettings(s, setS, subPage) { subPage = it }
-                        2 -> TouchSettings(s, setS)
+                        2 -> TouchSettings(s, setS, onImportTheme, onImportBackgroundPortrait, onImportBackgroundLandscape)
                         3 -> PadSettings(s, setS, { onSave(s); onOpenKeyMapper() }, { onSave(s); onOpenMappingInfo() })
                         4 -> AudioSettings(s, setS)
                         5 -> SystemSettings(s, setS)
@@ -511,12 +514,20 @@ fun SettingsScreen(
         s.extDisplayDelay, 0, 2, uiContext.getString(R.string.settings_frames)) { set(s.copy(extDisplayDelay = it)) }
 }
 
-@Composable private fun TouchSettings(s: DsSettings, set: (DsSettings) -> Unit) {
+@Composable
+private fun TouchSettings(
+    s: DsSettings,
+    set: (DsSettings) -> Unit,
+    onImportTheme: () -> Unit,
+    onImportBackgroundPortrait: () -> Unit,
+    onImportBackgroundLandscape: () -> Unit,
+) {
     val uiContext = androidx.compose.ui.platform.LocalContext.current
     val options = androidx.compose.runtime.remember(uiContext, androidx.compose.ui.platform.LocalConfiguration.current) { SettingsOptions(uiContext) }
     Group(uiContext.getString(R.string.settings_appearance))
-    DropdownRow(uiContext.getString(R.string.settings_pad_style), uiContext.getString(R.string.settings_look_of_the_touch_buttons),
-        options.padStyle, s.padStyle) { set(s.copy(padStyle = it)) }
+    ImportButtonRow(uiContext.getString(R.string.settings_import_background_portrait), onImportBackgroundPortrait)
+    ImportButtonRow(uiContext.getString(R.string.settings_import_background_landscape), onImportBackgroundLandscape)
+    ImportButtonRow(uiContext.getString(R.string.settings_import_community_theme), onImportTheme)
     SliderRow(uiContext.getString(R.string.settings_control_opacity), uiContext.getString(R.string.settings_transparency_of_the_buttons_at_0_they_re),
         (s.controllerAlpha * 100).toInt(), 0, 100, uiContext.getString(R.string.percent_unit)) { set(s.copy(controllerAlpha = it / 100f)) }
     SwitchRow(uiContext.getString(R.string.settings_show_start_select), uiContext.getString(R.string.settings_shows_the_start_and_select_buttons_on_screen),
@@ -997,7 +1008,6 @@ fun SettingsScreen(
             .padding(bottom = 5.dp)
             .clip(shape)
             .background(colors.surface)
-            .let { if (focused) it.border(2.dp, colors.red, shape) else it }
             .let {
                 if (onClick != null) {
                     it.clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
@@ -1195,10 +1205,28 @@ private val LocalSettingsRows = androidx.compose.runtime.compositionLocalOf<Sett
     )
 }
 
+@Composable
+private fun ImportButtonRow(label: String, onClick: () -> Unit) {
+    val colors = seedless
+    SettingSlab(onClick = onClick, external = externalFor(label, "")) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RowText(label, "", Modifier.weight(1f).padding(end = 12.dp))
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                null,
+                tint = colors.text3,
+                modifier = Modifier.size(19.dp),
+            )
+        }
+    }
+}
+
 @Composable private fun NavRow(title: String, desc: String, onClick: () -> Unit) {
     val colors = seedless
     SettingSlab(onClick = onClick, external = externalFor(title, desc)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             RowText(title, desc, Modifier.weight(1f).padding(end = 12.dp))
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight, null,

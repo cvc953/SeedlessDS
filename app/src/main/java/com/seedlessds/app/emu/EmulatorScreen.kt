@@ -83,8 +83,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -93,6 +97,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.platform.LocalDensity
@@ -105,6 +110,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 
 private enum class Overlay { NONE, MENU, SETTINGS, SETTINGS_GAME, STATE_SAVE, STATE_LOAD, CHEATS, KEYMAP, MAPPING_INFO, SYSTEM_TOOLS, HELP, ACHIEVEMENTS, LEADERBOARDS, PRESETS }
 
@@ -194,6 +201,39 @@ fun EmulatorScreen(
         if (SettingsRepo.hasPerGame(ctx, gameTitle)) { perGame = next; onApplyPerGame(next) }
         else { settings = next; onApplySettings(next) }
     }
+    val themePicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+    ) { uri ->
+        if (uri != null) CommunityThemes.install(ctx, uri)?.let { theme ->
+            applyDisplayPersist { current -> current.copy(
+                controlTheme = CommunityThemes.id(theme),
+                customBackground = if (theme.background != null || theme.backgroundPortrait != null || theme.backgroundLandscape != null) "" else current.customBackground,
+                customBackgroundPortrait = if (theme.backgroundPortrait != null) "" else current.customBackgroundPortrait,
+                customBackgroundLandscape = if (theme.backgroundLandscape != null) "" else current.customBackgroundLandscape,
+            ) }
+        }
+    }
+    val backgroundPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+    ) { uri ->
+        if (uri != null) CommunityThemes.importBackground(ctx, uri)?.let { path ->
+            applyDisplayPersist { it.copy(customBackground = path) }
+        }
+    }
+    val portraitBackgroundPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) CommunityThemes.importBackground(ctx, uri)?.let { path ->
+            applyDisplayPersist { it.copy(customBackgroundPortrait = path) }
+        }
+    }
+    val landscapeBackgroundPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) CommunityThemes.importBackground(ctx, uri)?.let { path ->
+            applyDisplayPersist { it.copy(customBackgroundLandscape = path) }
+        }
+    }
     fun nextLayout(l: Int) = (l + 1) % 5
 
     fun dispatchExtra(fn: Int, pressed: Boolean) {
@@ -227,6 +267,7 @@ fun EmulatorScreen(
     }
     BackHandler(enabled = overlay == Overlay.NONE && !editingControls) { if (!settings.disableBackButton) overlay = Overlay.MENU }
     BackHandler(enabled = overlay == Overlay.MENU) { overlay = Overlay.NONE }
+    val communityTheme = CommunityThemes.find(ctx, settings.controlTheme)
 
     Box(Modifier.fillMaxSize().background(Color.Black).onSizeChanged { canvasPx = it }) {
         androidx.compose.ui.viewinterop.AndroidView(
@@ -234,6 +275,14 @@ fun EmulatorScreen(
         )
 
         if (overlay == Overlay.NONE) {
+            ControlBackground(
+                glView,
+                communityTheme,
+                settings.customBackground,
+                settings.customBackgroundPortrait,
+                settings.customBackgroundLandscape,
+                settings.screenLayout,
+            )
             if (editingControls) {
                 Box(Modifier.fillMaxSize()
                     .background(Color(0x66000000))
@@ -372,6 +421,10 @@ fun EmulatorScreen(
                     onOpenSystemTools = { overlay = Overlay.SYSTEM_TOOLS },
                     onBack = { overlay = Overlay.MENU },
                     gameRunning = true,
+                    onImportTheme = { themePicker.launch("application/zip") },
+                    onImportBackground = { backgroundPicker.launch("image/*") },
+                    onImportBackgroundPortrait = { portraitBackgroundPicker.launch(arrayOf("image/*")) },
+                    onImportBackgroundLandscape = { landscapeBackgroundPicker.launch(arrayOf("image/*")) },
                 )
             }
             Overlay.SETTINGS_GAME -> Surface(Modifier.fillMaxSize()) {
@@ -383,6 +436,10 @@ fun EmulatorScreen(
                     onOpenSystemTools = { overlay = Overlay.SYSTEM_TOOLS },
                     onBack = { overlay = Overlay.MENU },
                     gameRunning = true,
+                    onImportTheme = { themePicker.launch("application/zip") },
+                    onImportBackground = { backgroundPicker.launch("image/*") },
+                    onImportBackgroundPortrait = { portraitBackgroundPicker.launch(arrayOf("image/*")) },
+                    onImportBackgroundLandscape = { landscapeBackgroundPicker.launch(arrayOf("image/*")) },
                     subtitle = uiContext.getString(R.string.common_only_for, gameTitle, if (SettingsRepo.hasPerGame(ctx, gameTitle)) uiContext.getString(R.string.common_active_2) else uiContext.getString(R.string.menu_global)),
                     onReset = { onClearPerGame() },
                 )
@@ -778,6 +835,7 @@ private fun ControlsOverlay(
     }
     val alpha = settings.controllerAlpha.coerceIn(0f, 1f)
     val style = settings.padStyle
+    val communityTheme = CommunityThemes.find(ctx, settings.controlTheme)
 
     fun isVisible(id: String): Boolean = editMode || hiddenSet[id] != true
 
@@ -805,26 +863,27 @@ private fun ControlsOverlay(
     Box(Modifier.fillMaxSize()) {
         if (showMain) {
             if (isVisible("lbtn")) PadButton(uiContext.getString(R.string.button_l), Modifier.align(Alignment.TopStart).ctrl("lbtn").padding(12.dp).size(64.dp, 44.dp),
-                RoundedCornerShape(10.dp), alpha, haptic, editMode, style) { glView.setButton(C.L, it) }
+                RoundedCornerShape(10.dp), alpha, haptic, editMode, style, communityTheme, "l") { glView.setButton(C.L, it) }
             if (isVisible("rbtn")) PadButton(uiContext.getString(R.string.button_r), Modifier.align(Alignment.TopEnd).ctrl("rbtn").padding(12.dp).size(64.dp, 44.dp),
-                RoundedCornerShape(10.dp), alpha, haptic, editMode, style) { glView.setButton(C.R, it) }
+                RoundedCornerShape(10.dp), alpha, haptic, editMode, style, communityTheme, "r") { glView.setButton(C.R, it) }
 
-            if (isVisible("dpad")) Dpad(Modifier.align(Alignment.BottomStart).ctrl("dpad").padding(16.dp), glView, alpha, haptic, editMode, style)
-            if (isVisible("face")) FaceButtons(Modifier.align(Alignment.BottomEnd).ctrl("face").padding(16.dp), glView, alpha, haptic, editMode, style)
+            if (isVisible("dpad")) Dpad(Modifier.align(Alignment.BottomStart).ctrl("dpad").padding(16.dp), glView, alpha, haptic, editMode, style, communityTheme)
+            if (isVisible("face")) FaceButtons(Modifier.align(Alignment.BottomEnd).ctrl("face").padding(16.dp), glView, alpha, haptic, editMode, style, communityTheme)
 
             if (settings.showStartSelect && isVisible("startselect")) Row(Modifier.align(Alignment.BottomCenter).ctrl("startselect").padding(bottom = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                PadButton(uiContext.getString(R.string.common_select), Modifier.size(96.dp, 34.dp), RoundedCornerShape(16.dp), alpha, haptic, editMode, style) { glView.setButton(C.SELECT, it) }
-                PadButton(uiContext.getString(R.string.common_start), Modifier.size(96.dp, 34.dp), RoundedCornerShape(16.dp), alpha, haptic, editMode, style) { glView.setButton(C.START, it) }
+                PadButton(uiContext.getString(R.string.common_select), Modifier.size(96.dp, 34.dp), RoundedCornerShape(16.dp), alpha, haptic, editMode, style, communityTheme, "select") { glView.setButton(C.SELECT, it) }
+                PadButton(uiContext.getString(R.string.common_start), Modifier.size(96.dp, 34.dp), RoundedCornerShape(16.dp), alpha, haptic, editMode, style, communityTheme, "start") { glView.setButton(C.START, it) }
             }
         }
 
         val extras = listOf(settings.extraFunc1, settings.extraFunc2, settings.extraFunc3)
+        val extraAssetKeys = listOf("i", "ii", "iii")
         if (isVisible("extra")) Column(Modifier.align(Alignment.CenterEnd).ctrl("extra").padding(end = 4.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             extras.forEachIndexed { i, fn ->
                 if (fn != 0) PadButton(uiContext.getString(EXTRA_LABELS[fn] ?: R.string.unknown_symbol), Modifier.size(50.dp),
-                    RoundedCornerShape(8.dp), alpha, haptic, editMode, style) { pressed -> dispatchExtra(fn, pressed) }
+                    RoundedCornerShape(8.dp), alpha, haptic, editMode, style, communityTheme, extraAssetKeys[i]) { pressed -> dispatchExtra(fn, pressed) }
             }
         }
 
@@ -832,23 +891,94 @@ private fun ControlsOverlay(
             1 -> Alignment.BottomCenter; 2 -> Alignment.CenterStart; 3 -> Alignment.CenterEnd
             4 -> null; else -> Alignment.TopCenter
         }
-        if (menuAlign != null && isVisible("menu")) Box(
-            Modifier.align(menuAlign).ctrl("menu").padding(8.dp).size(48.dp)
-                .background(Color(0x55000000), CircleShape)
-                .then(if (editMode) Modifier else Modifier.pointerInput(Unit) { detectTapReleased(onMenu) }),
-            contentAlignment = Alignment.Center
-        ) { Icon(Icons.Filled.Menu, "menu", tint = Color.White.copy(alpha = 0.9f)) }
+        if (menuAlign != null && isVisible("menu")) {
+            val menuHasSprite = communityTheme != null &&
+                CommunityThemes.image(communityTheme, "menu") != null
+            if (menuHasSprite) {
+                Box(
+                    Modifier.align(menuAlign).ctrl("menu").padding(8.dp).size(48.dp)
+                        .then(if (editMode) Modifier else Modifier.pointerInput(Unit) { detectTapReleased(onMenu) })
+                ) {
+                    PadButton("", Modifier.fillMaxSize(), CircleShape, alpha, haptic, editMode, style, communityTheme, "menu") { if (!it) onMenu() }
+                }
+            } else {
+                Box(
+                    Modifier.align(menuAlign).ctrl("menu").padding(8.dp).size(48.dp)
+                        .background(Color(0x55000000), CircleShape)
+                        .then(if (editMode) Modifier else Modifier.pointerInput(Unit) { detectTapReleased(onMenu) }),
+                    contentAlignment = Alignment.Center
+                ) { Icon(Icons.Filled.Menu, "menu", tint = Color.White.copy(alpha = 0.9f)) }
+            }
+        }
     }
 }
 
 @Composable
-private fun Dpad(modifier: Modifier, glView: DsGlView, alpha: Float, haptic: () -> Unit, editMode: Boolean, style: Int) {
+private fun ControlBackground(
+    glView: DsGlView,
+    theme: CommunityTheme?,
+    customBackground: String,
+    customPortrait: String,
+    customLandscape: String,
+    screenLayout: Int,
+) {
+    val customImage = remember(customBackground) { customBackground.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
+    val customPortraitImage = remember(customPortrait) { customPortrait.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
+    val customLandscapeImage = remember(customLandscape) { customLandscape.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
+    val themePortraitImage = remember(theme?.id) { theme?.let { CommunityThemes.image(it, "backgroundPortrait") } }
+    val themeLandscapeImage = remember(theme?.id) { theme?.let { CommunityThemes.image(it, "backgroundLandscape") } }
+    val themeImage = remember(theme?.id) { theme?.let { CommunityThemes.image(it, "background") } }
+    Canvas(Modifier.fillMaxSize()) {
+        val landscape = screenLayout != 2
+        val image = if (landscape) {
+            customLandscapeImage ?: customImage ?: themeLandscapeImage ?: themePortraitImage ?: themeImage
+        } else {
+            customPortraitImage ?: customImage ?: themePortraitImage ?: themeLandscapeImage ?: themeImage
+        }
+        if (image == null) return@Canvas
+        val screens = listOf(glView.topScreenRect, glView.bottomScreenRect)
+        val active = screens.filter { it.size >= 4 && it[2] > 0f && it[3] > 0f }
+        val valid = active.all { rect ->
+            rect[0] >= 0f && rect[1] >= 0f &&
+                rect[0] + rect[2] <= size.width && rect[1] + rect[3] <= size.height
+        }
+        if (!valid || active.isEmpty()) return@Canvas
+
+        val outside = Path().apply {
+            fillType = PathFillType.EvenOdd
+            addRect(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
+            active.forEach { rect ->
+                addRect(androidx.compose.ui.geometry.Rect(rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3]))
+            }
+        }
+        clipPath(outside) {
+            drawImage(
+                image,
+                dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt(), size.height.toInt()),
+            )
+        }
+    }
+}
+
+@Composable
+private fun Dpad(modifier: Modifier, glView: DsGlView, alpha: Float, haptic: () -> Unit, editMode: Boolean, style: Int, theme: CommunityTheme?) {
     val uiContext = androidx.compose.ui.platform.LocalContext.current
     val C = EmulatorActivity
     val s = 52.dp
     val noDiagonals = SettingsRepo.current.noDiagonals
     var mask by remember { mutableIntStateOf(0) }
-    val (bg, pressedBg, fg) = padColors(style)
+    val (bg, pressedBg, fg) = padColors(style, theme)
+    val dpadImage = remember(theme?.id, mask) {
+        theme?.let { currentTheme ->
+            when {
+                currentTheme.drasticDpadSheets.isNotEmpty() ->
+                    CommunityThemes.image(currentTheme, "dpad", mask != 0, drasticDpadState(mask))
+                currentTheme.assets["dpad"] != null ->
+                    CommunityThemes.image(currentTheme, "dpad")
+                else -> null
+            }
+        }
+    }
     Box(
         modifier.size(s * 3).androidx_alpha(alpha)
             .then(if (editMode) Modifier else Modifier.pointerInput(noDiagonals) {
@@ -867,11 +997,27 @@ private fun Dpad(modifier: Modifier, glView: DsGlView, alpha: Float, haptic: () 
                 }
             })
     ) {
-        DpadCap(uiContext.getString(R.string.direction_up_symbol), mask and 1 != 0, Modifier.align(Alignment.TopCenter).size(s), bg, pressedBg, fg)
-        DpadCap(uiContext.getString(R.string.direction_down_symbol), mask and 2 != 0, Modifier.align(Alignment.BottomCenter).size(s), bg, pressedBg, fg)
-        DpadCap(uiContext.getString(R.string.direction_left_symbol), mask and 4 != 0, Modifier.align(Alignment.CenterStart).size(s), bg, pressedBg, fg)
-        DpadCap(uiContext.getString(R.string.direction_right_symbol), mask and 8 != 0, Modifier.align(Alignment.CenterEnd).size(s), bg, pressedBg, fg)
+        if (dpadImage != null) Image(dpadImage, null, Modifier.fillMaxSize())
+        else {
+            DpadCap(uiContext.getString(R.string.direction_up_symbol), mask and 1 != 0, Modifier.align(Alignment.TopCenter).size(s), bg, pressedBg, fg)
+            DpadCap(uiContext.getString(R.string.direction_down_symbol), mask and 2 != 0, Modifier.align(Alignment.BottomCenter).size(s), bg, pressedBg, fg)
+            DpadCap(uiContext.getString(R.string.direction_left_symbol), mask and 4 != 0, Modifier.align(Alignment.CenterStart).size(s), bg, pressedBg, fg)
+            DpadCap(uiContext.getString(R.string.direction_right_symbol), mask and 8 != 0, Modifier.align(Alignment.CenterEnd).size(s), bg, pressedBg, fg)
+        }
     }
+}
+
+private fun drasticDpadState(mask: Int): Int = when (mask) {
+    0 -> 0
+    1 -> 1
+    1 or 8 -> 2
+    8 -> 3
+    2 or 8 -> 4
+    2 -> 5
+    2 or 4 -> 6
+    4 -> 7
+    1 or 4 -> 8
+    else -> 0
 }
 
 @Composable
@@ -897,38 +1043,42 @@ private fun dpadMask(p: Offset, size: IntSize, noDiagonals: Boolean): Int {
 }
 
 @Composable
-private fun FaceButtons(modifier: Modifier, glView: DsGlView, alpha: Float, haptic: () -> Unit, editMode: Boolean, style: Int) {
+private fun FaceButtons(modifier: Modifier, glView: DsGlView, alpha: Float, haptic: () -> Unit, editMode: Boolean, style: Int, theme: CommunityTheme?) {
     val uiContext = androidx.compose.ui.platform.LocalContext.current
     val C = EmulatorActivity
     val s = 56.dp
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        PadButton(uiContext.getString(R.string.button_x), Modifier.size(s), CircleShape, alpha, haptic, editMode, style) { glView.setButton(C.X, it) }
+        PadButton(uiContext.getString(R.string.button_x), Modifier.size(s), CircleShape, alpha, haptic, editMode, style, theme, "x") { glView.setButton(C.X, it) }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            PadButton(uiContext.getString(R.string.button_y), Modifier.size(s), CircleShape, alpha, haptic, editMode, style) { glView.setButton(C.Y, it) }
+            PadButton(uiContext.getString(R.string.button_y), Modifier.size(s), CircleShape, alpha, haptic, editMode, style, theme, "y") { glView.setButton(C.Y, it) }
             Spacer(Modifier.width(s))
-            PadButton(uiContext.getString(R.string.button_a), Modifier.size(s), CircleShape, alpha, haptic, editMode, style) { glView.setButton(C.A, it) }
+            PadButton(uiContext.getString(R.string.button_a), Modifier.size(s), CircleShape, alpha, haptic, editMode, style, theme, "a") { glView.setButton(C.A, it) }
         }
-        PadButton(uiContext.getString(R.string.button_b), Modifier.size(s), CircleShape, alpha, haptic, editMode, style) { glView.setButton(C.B, it) }
+        PadButton(uiContext.getString(R.string.button_b), Modifier.size(s), CircleShape, alpha, haptic, editMode, style, theme, "b") { glView.setButton(C.B, it) }
     }
 }
 
-private fun padColors(style: Int): Triple<Color, Color, Color> = when (style) {
+private fun padColors(style: Int, theme: CommunityTheme? = null): Triple<Color, Color, Color> = theme?.let { Triple(it.button, it.pressedButton, it.text) } ?: when (style) {
     1 -> Triple(Color(0xFFE8E8F0), Color(0xFFFFFFFF), Color(0xFF222233))
     2 -> Triple(Color(0x33101018), Color(0x66FFFFFF), Color.White)
+    3 -> Triple(Color(0xFF0B4A52), Color(0xFF1B8990), Color.White)
+    4 -> Triple(Color(0xFFB8C0CC), Color(0xFFE8ECF2), Color(0xFF1A2230))
     else -> Triple(Color(0xFF222233), Color(0xFFDDDDEE), Color.White)
 }
 
 @Composable
 private fun PadButton(
     label: String, modifier: Modifier, shape: Shape, alpha: Float, haptic: () -> Unit,
-    editMode: Boolean, style: Int = 0, onPress: (Boolean) -> Unit
+    editMode: Boolean, style: Int = 0, theme: CommunityTheme? = null, assetKey: String? = null, onPress: (Boolean) -> Unit
 ) {
     var pressed by remember { mutableStateOf(false) }
-    val (bg, pressedBg, fg) = padColors(style)
+    val (bg, pressedBg, fg) = padColors(style, theme)
+    val image = remember(theme?.id, assetKey, pressed) { theme?.let { CommunityThemes.image(it, assetKey ?: "", pressed) } }
+    val useThemeImage = image != null
     Box(
         modifier
             .androidx_alpha(alpha)
-            .background(if (pressed) pressedBg else bg, shape)
+            .let { if (useThemeImage) it else it.background(if (pressed) pressedBg else bg, shape) }
             .then(if (editMode) Modifier else Modifier.pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -940,7 +1090,10 @@ private fun PadButton(
                 }
             }),
         contentAlignment = Alignment.Center
-    ) { Text(label, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+    ) {
+        if (image != null) Image(image, null, Modifier.fillMaxSize())
+        else Text(label, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    }
 }
 
 private fun Modifier.androidx_alpha(a: Float): Modifier = this.then(Modifier.graphicsLayer { this.alpha = a })
