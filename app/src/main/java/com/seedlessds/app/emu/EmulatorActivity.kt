@@ -131,7 +131,7 @@ class EmulatorActivity : ComponentActivity() {
 
         KeyMap.load(this)
         val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        ControlLayout.load(this, isLandscape)
+        ControlLayout.load(this, isLandscape, SettingsRepo.current.screenLayout)
         val stateInfo = SaveStateInfo(this, userSub, gameBase, romUri, romPath)
         reconSlot.set(0)
         if (com.seedlessds.app.Recon.available) {
