@@ -824,5 +824,7 @@
     <string name="tools_nintendo_bios_optional">"Nintendo BIOS (optional)"</string>
     <string name="tools_no_valid_bios_recognized_check_the_size">"No valid BIOS recognized (check the size)."</string>
     <string name="ui_nav">"NAV"</string>
+    <string name="control_width">"Width"</string>
+    <string name="control_height">"Height"</string>
     <string name="unknown_symbol" translatable="false">"?"</string>
 </resources>
