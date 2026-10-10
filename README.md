@@ -91,7 +91,7 @@ The imported theme is stored locally and can be selected globally or for an indi
 
 Theme packages may also provide images named `a.png`, `b.png`, `x.png`, `y.png`, `l.png`, `r.png`, `start.png`, `select.png` and `dpad.png`, or list them in the `assets` object of `theme.json`. Pressed versions can use names such as `a_pressed.png` or the `pressedAssets` object. SeedlessDS switches to the pressed image while the control is held.
 
-For legacy DraStic-style ZIPs, SeedlessDS also supports DraStic sprite sheets such as `padbuttons_0.png`, `padbuttons_1.png` and `dpad_0.png` through `dpad_8.png`, as well as individual button names such as `button_a.png` / `button_a_pressed.png`. DraStic packages without a background keep the currently selected standalone background. Citra packages may provide separate `portrait` and `landscape` backgrounds; SeedlessDS switches between them when the device rotates, with the other orientation used as fallback. Layout files that only contain screen geometry are not controller skins.
+For legacy DraStic-style ZIPs, SeedlessDS also supports DraStic sprite sheets such as `padbuttons_0.png`, `padbuttons_1.png` and `dpad_0.png` through `dpad_8.png`, as well as individual button names such as `button_a.png` / `button_a_pressed.png`. DraStic packages without a background keep the currently selected standalone background. Citra packages may provide separate `portrait` and `landscape` backgrounds; SeedlessDS switches between them when the device rotates, with the other orientation used as fallback. **Layout files may be used as backgrounds in addition to their geometry role.**
 
 ## How it is built
 
