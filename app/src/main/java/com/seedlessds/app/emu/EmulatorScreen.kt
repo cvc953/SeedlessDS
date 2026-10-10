@@ -945,9 +945,9 @@ private fun ControlBackground(
     val customImage = remember(customBackground) { customBackground.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
     val customPortraitImage = remember(customPortrait) { customPortrait.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
     val customLandscapeImage = remember(customLandscape) { customLandscape.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
-    val themePortraitImage = remember(theme?.id) { theme?.let { CommunityThemes.image(it, "backgroundPortrait") } }
-    val themeLandscapeImage = remember(theme?.id) { theme?.let { CommunityThemes.image(it, "backgroundLandscape") } }
-    val themeImage = remember(theme?.id) { theme?.let { CommunityThemes.image(it, "background") } }
+    val themePortraitImage = remember(screenLayout, theme?.id) { theme?.let { CommunityThemes.image(it, "backgroundPortrait") } }
+    val themeLandscapeImage = remember(screenLayout, theme?.id) { theme?.let { CommunityThemes.image(it, "backgroundLandscape") } }
+    val themeImage = remember(screenLayout, theme?.id) { theme?.let { CommunityThemes.image(it, "background") } }
     Canvas(Modifier.fillMaxSize()) {
         val landscape = screenLayout != 2
         val image = if (landscape) {
