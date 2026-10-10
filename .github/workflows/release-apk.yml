@@ -19,7 +19,17 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up JDK 17
+    - name: Set up Android SDK
+      uses: actions/setup-android@v3
+      with:
+        api-level: 35
+        ndk: '25.2.9519653'
+        cmake: '3.22.1'
+
+    - name: Accept licenses
+      run: yes | sdkmanager --licenses
+
+    - name: Set up JDK 17 for Kotlin
       uses: actions/setup-java@v4
       with:
         java-version: '17'
@@ -71,6 +81,6 @@ jobs:
 
     - name: Print artifact availability
       run: |
-        echo "Build completed."
-        echo "Artifacts (release APK(s) or debug APK) are available for download in the Actions tab."
-        echo "For full release builds with signing, configure GitHub secrets as described in the workflow."
+        echo "Build completed successfully."
+        echo "Artifacts are available for download in the Actions tab."
+        echo "For full release builds with signing, configure GitHub secrets as described."
