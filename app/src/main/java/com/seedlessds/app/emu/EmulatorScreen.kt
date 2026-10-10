@@ -260,14 +260,28 @@ fun EmulatorScreen(
         onDispose { ExtraKeyRouter.handler = null }
     }
 
+    val deviceLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val communityTheme = CommunityThemes.find(ctx, settings.controlTheme)
+
+    androidx.compose.runtime.LaunchedEffect(deviceLandscape, settings.screenLayout) {
+        ControlLayout.load(ctx, deviceLandscape, settings.screenLayout)
+        offsets.clear()
+        ControlLayout.ids.forEach { offsets[it] = ControlLayout.offsetOf(it) }
+        scales.clear()
+        ControlLayout.ids.forEach { scales[it] = ControlLayout.scaleOf(it) }
+        hiddenSet.clear()
+        ControlLayout.ids.forEach { hiddenSet[it] = ControlLayout.isHidden(it) }
+        glView.applyDisplaySettings()
+        rectTick++
+    }
+
     BackHandler(enabled = editingControls) {
-        ControlLayout.load(ctx)
+        ControlLayout.load(ctx, deviceLandscape, settings.screenLayout)
         ControlLayout.ids.forEach { offsets[it] = ControlLayout.offsetOf(it); scales[it] = ControlLayout.scaleOf(it); hiddenSet[it] = ControlLayout.isHidden(it) }
         selectedId = null; glView.applyDisplaySettings(); rectTick++; editingControls = false
     }
     BackHandler(enabled = overlay == Overlay.NONE && !editingControls) { if (!settings.disableBackButton) overlay = Overlay.MENU }
     BackHandler(enabled = overlay == Overlay.MENU) { overlay = Overlay.NONE }
-    val communityTheme = CommunityThemes.find(ctx, settings.controlTheme)
 
     Box(Modifier.fillMaxSize().background(Color.Black).onSizeChanged { canvasPx = it }) {
         androidx.compose.ui.viewinterop.AndroidView(
@@ -290,15 +304,17 @@ fun EmulatorScreen(
                 val topRect = remember(rectTick) { glView.topScreenRect }
                 val botRect = remember(rectTick) { glView.bottomScreenRect }
                 ScreenEditHandle("screenTop", uiContext.getString(R.string.common_top_2), topRect, selectedId == "screenTop", canvasPx,
-                    onSelect = { selectedId = "screenTop" }) { dx, dy ->
-                    ControlLayout.topOffX += dx; ControlLayout.topOffY += dy
-                    glView.applyDisplaySettings(); rectTick++
-                }
+                    onSelect = { selectedId = "screenTop" },
+                    addOff = { dx, dy ->
+                        ControlLayout.topOffX += dx; ControlLayout.topOffY += dy
+                        glView.applyDisplaySettings(); rectTick++
+                    })
                 ScreenEditHandle("screenBot", uiContext.getString(R.string.common_bottom_2), botRect, selectedId == "screenBot", canvasPx,
-                    onSelect = { selectedId = "screenBot" }) { dx, dy ->
-                    ControlLayout.botOffX += dx; ControlLayout.botOffY += dy
-                    glView.applyDisplaySettings(); rectTick++
-                }
+                    onSelect = { selectedId = "screenBot" },
+                    addOff = { dx, dy ->
+                        ControlLayout.botOffX += dx; ControlLayout.botOffY += dy
+                        glView.applyDisplaySettings(); rectTick++
+                    })
             }
             ControlsOverlay(glView, settings, offsets, scales, hiddenSet, selectedId,
                 { selectedId = it }, editingControls, hideControls, ::dispatchExtra) {
@@ -318,17 +334,17 @@ fun EmulatorScreen(
                     EditActionBar(
                         onDrag = { dx, dy -> toolbarOffset = androidx.compose.ui.unit.IntOffset(toolbarOffset.x + dx, toolbarOffset.y + dy) },
                         onSave = {
-                            ControlLayout.save(ctx, offsets.toMap(), scales.toMap(), deviceLandscape)
+                            ControlLayout.save(ctx, offsets.toMap(), scales.toMap(), deviceLandscape, settings.screenLayout)
                             selectedId = null; editingControls = false
                         },
                         onReset = {
-                            ControlLayout.reset(ctx)
+                            ControlLayout.reset(ctx, deviceLandscape, settings.screenLayout)
                             ControlLayout.ids.forEach { offsets[it] = 0f to 0f; scales[it] = 1f; hiddenSet[it] = false }
                             selectedId = null; toolbarOffset = androidx.compose.ui.unit.IntOffset.Zero
                             glView.applyDisplaySettings(); onApplyExternal(); rectTick++
                         },
                         onCancel = {
-                            ControlLayout.load(ctx)
+                            ControlLayout.load(ctx, deviceLandscape, settings.screenLayout)
                             ControlLayout.ids.forEach { offsets[it] = ControlLayout.offsetOf(it); scales[it] = ControlLayout.scaleOf(it); hiddenSet[it] = ControlLayout.isHidden(it) }
                             selectedId = null; glView.applyDisplaySettings(); onApplyExternal(); rectTick++; editingControls = false
                         }
@@ -337,34 +353,36 @@ fun EmulatorScreen(
                     if (sel != null) {
                         val isScreen = sel == "screenTop" || sel == "screenBot" || sel == "extScreen"
                         val range = if (isScreen) 0.25f..1f else 0.5f..2f
-                        val curValue = when (sel) {
-                            "screenTop" -> ControlLayout.topScale
-                            "screenBot" -> ControlLayout.botScale
-                            "extScreen" -> ControlLayout.extScale
-                            else -> scales[sel] ?: 1f
-                        }
                         val isBtn = sel in ControlLayout.ids
-                        EditSizeBar(
-                            modifier = Modifier.padding(top = 6.dp),
-                            label = when (sel) {
-                                "screenTop" -> uiContext.getString(R.string.common_top_screen); "screenBot" -> uiContext.getString(R.string.common_bottom_screen)
-                                "extScreen" -> uiContext.getString(R.string.menu_external_screen); else -> sel
-                            },
-                            value = curValue.coerceIn(range.start, range.endInclusive),
-                            range = range,
-                            hidden = if (isBtn) hiddenSet[sel] == true else null,
-                            onToggleHide = if (isBtn) {
-                                { val h = hiddenSet[sel] != true; hiddenSet[sel] = h; ControlLayout.setHidden(sel, h) }
-                            } else null,
-                            onValue = { v ->
+                        
+                        if (isScreen) {
+                            val (scaleX, scaleY) = when (sel) {
+                                "screenTop" -> ControlLayout.topScaleX to ControlLayout.topScaleY
+                                "screenBot" -> ControlLayout.botScaleX to ControlLayout.botScaleY
+                                else -> ControlLayout.extScale to ControlLayout.extScale
+                            }
+                            
+                            EditSizeBar(Modifier.padding(top = 6.dp), "Width Scale", scaleX, range, null, null) { v ->
                                 when (sel) {
-                                    "screenTop" -> { ControlLayout.topScale = v; glView.applyDisplaySettings(); rectTick++ }
-                                    "screenBot" -> { ControlLayout.botScale = v; glView.applyDisplaySettings(); rectTick++ }
+                                    "screenTop" -> { ControlLayout.topScaleX = v; glView.applyDisplaySettings(); rectTick++ }
+                                    "screenBot" -> { ControlLayout.botScaleX = v; glView.applyDisplaySettings(); rectTick++ }
                                     "extScreen" -> { ControlLayout.extScale = v; onApplyExternal(); rectTick++ }
-                                    else -> scales[sel] = v
                                 }
                             }
-                        )
+                            EditSizeBar(Modifier.padding(top = 6.dp), "Height Scale", scaleY, range, null, null) { v ->
+                                when (sel) {
+                                    "screenTop" -> { ControlLayout.topScaleY = v; glView.applyDisplaySettings(); rectTick++ }
+                                    "screenBot" -> { ControlLayout.botScaleY = v; glView.applyDisplaySettings(); rectTick++ }
+                                    "extScreen" -> { ControlLayout.extScale = v; onApplyExternal(); rectTick++ }
+                                }
+                            }
+                        } else {
+                            val curValue = scales[sel] ?: 1f
+                            EditSizeBar(Modifier.padding(top = 6.dp), sel, curValue, range,
+                                hiddenSet[sel], { val h = hiddenSet[sel] != true; hiddenSet[sel] = h; ControlLayout.setHidden(sel, h) }) { v ->
+                                scales[sel] = v
+                            }
+                        }
                     }
                 }
             }
