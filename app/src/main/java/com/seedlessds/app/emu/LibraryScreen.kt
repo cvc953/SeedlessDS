@@ -396,7 +396,6 @@ fun LibraryScreen(
                     Spacer(Modifier.width(4.dp))
                     SeedlessHeaderAction(Icons.Rounded.VideogameAsset, uiContext.getString(R.string.library_open_rom), onOpenSingle)
                     SeedlessHeaderAction(Icons.Rounded.CreateNewFolder, uiContext.getString(R.string.library_add_folder), onAddFolder)
-                    SeedlessHeaderAction(Icons.Rounded.FolderDelete, uiContext.getString(R.string.library_remove_folder), { foldersDialog = true })
                     SeedlessHeaderAction(Icons.Rounded.Settings, uiContext.getString(R.string.common_settings), onGlobalSettings)
                     }
                 }
@@ -414,7 +413,10 @@ fun LibraryScreen(
         },
         bottomBar = {
             GamepadHintsFooter(
-                modifier = Modifier.background(colors.bg).navigationBarsPadding(),
+                modifier = Modifier
+                    .background(colors.bg)
+                    .navigationBarsPadding()
+                    .height(48.dp),
                 hints = listOf(
                     GamepadHint(null, uiContext.getString(R.string.common_navigate)),
                     GamepadHint(uiContext.getString(R.string.button_a), uiContext.getString(R.string.common_play)),
