@@ -296,6 +296,7 @@ fun EmulatorScreen(
                 settings.customBackgroundPortrait,
                 settings.customBackgroundLandscape,
                 settings.screenLayout,
+                rectTick,
             )
             if (editingControls) {
                 Box(Modifier.fillMaxSize()
@@ -939,13 +940,14 @@ private fun ControlBackground(
     customPortrait: String,
     customLandscape: String,
     screenLayout: Int,
+    rectTick: Int,
 ) {
-    val customImage = remember(customBackground) { customBackground.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
-    val customPortraitImage = remember(customPortrait) { customPortrait.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
-    val customLandscapeImage = remember(customLandscape) { customLandscape.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
-    val themePortraitImage = remember(screenLayout, theme?.id) { theme?.let { CommunityThemes.image(it, "backgroundPortrait") } }
-    val themeLandscapeImage = remember(screenLayout, theme?.id) { theme?.let { CommunityThemes.image(it, "backgroundLandscape") } }
-    val themeImage = remember(screenLayout, theme?.id) { theme?.let { CommunityThemes.image(it, "background") } }
+    val customImage = remember(screenLayout, rectTick, customBackground) { customBackground.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
+    val customPortraitImage = remember(screenLayout, rectTick, customPortrait) { customPortrait.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
+    val customLandscapeImage = remember(screenLayout, rectTick, customLandscape) { customLandscape.takeIf { it.isNotBlank() }?.let(CommunityThemes::standaloneImage) }
+    val themePortraitImage = remember(screenLayout, rectTick, theme?.id) { theme?.let { CommunityThemes.image(it, "backgroundPortrait") } }
+    val themeLandscapeImage = remember(screenLayout, rectTick, theme?.id) { theme?.let { CommunityThemes.image(it, "backgroundLandscape") } }
+    val themeImage = remember(screenLayout, rectTick, theme?.id) { theme?.let { CommunityThemes.image(it, "background") } }
     Canvas(Modifier.fillMaxSize()) {
         val landscape = screenLayout != 2
         val image = if (landscape) {
