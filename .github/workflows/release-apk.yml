@@ -29,17 +29,48 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    - name: Configure release signing (optional)
+      # Create keystore file from secret if provided
+      run: |
+        if [ -n "${{ secrets.RELEASE_STORE_FILE }}" ] && [ -n "${{ secrets.RELEASE_KEY_ALIAS }}" ] && [ -n "${{ secrets.RELEASE_STORE_PASSWORD }}" ] && [ -n "${{ secrets.RELEASE_KEY_PASSWORD }}" ]; then
+          echo "RELEASE_STORE_FILE_BASE64=${{ secrets.RELEASE_STORE_FILE }}" >> $GITHUB_ENV
+          echo "RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}" >> $GITHUB_ENV
+          echo "Release signing credentials provided."
+        else
+          echo "No release signing credentials found - building with debug signing for artifact preview."
+          echo "To enable release signing, add these GitHub secrets:"
+          echo "  - RELEASE_STORE_FILE (base64-encoded keystore)"
+          echo "  - RELEASE_KEY_ALIAS"
+          echo "  - RELEASE_STORE_PASSWORD"
+          echo "  - RELEASE_KEY_PASSWORD"
+        fi
+
     - name: Build Release APK
-      run: ./gradlew assembleRelease
+      # If release signing credentials are available, use them; otherwise use debug signing
+      run: |
+        if [ -n "$RELEASE_STORE_FILE" ]; then
+          echo "storeFile=file://${RELEASE_STORE_FILE_BASE64}" > local.properties
+          echo "storePassword=${RELEASE_STORE_PASSWORD}" >> local.properties
+          echo "keyAlias=${RELEASE_KEY_ALIAS}" >> local.properties
+          echo "keyPassword=${RELEASE_KEY_PASSWORD}" >> local.properties
+          ./gradlew assembleRelease
+        else
+          ./gradlew assembleDebug
+        fi
 
     - name: Upload Release APK artifacts
       uses: actions/upload-artifact@v4
       with:
         name: seedlessds-release-apk
-        path: app/build/outputs/apk/release/*.apk
+        path: |
+          app/build/outputs/apk/release/*.apk
+          app/build/outputs/apk/debug/*.apk
         retention-days: 90
 
-    - name: Print artifact URLs
+    - name: Print artifact availability
       run: |
-        echo "Release APK artifacts have been uploaded."
-        echo "To download them, go to: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+        echo "Build completed."
+        echo "Artifacts (release APK(s) or debug APK) are available for download in the Actions tab."
+        echo "For full release builds with signing, configure GitHub secrets as described in the workflow."
