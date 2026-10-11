@@ -70,10 +70,73 @@ am start -n com.seedlessds.app/com.seedlessds.app.LaunchGame \
 
 The app recognizes `.nds`, `.dsi`, `.srl` and `.ids` game files and includes archive handling for ZIP, 7z and RAR. File recognition does not guarantee that a game or every archive layout is compatible. Device testing of the 7z/RAR paths remains in progress.
 
+### Touch themes
+
 Touch themes can be imported from **Settings > On-screen controls > Import community theme (.zip)**. The settings screen only exposes ZIP theme import and standalone background image import:
 
 You can also import only one image from **Settings > On-screen controls > Import background image**, without importing a complete theme package.
 
-
-
 The imported theme is stored locally and can be selected globally or for an individual game. The background is drawn around the DS screens, while the colors style the touch buttons.
+
+## How it is built
+
+| Layer | Implementation |
+|---|---|
+| Android app | Kotlin, Jetpack Compose, Material 3 and Android Views |
+| Emulation | [SeedlessCoreDS](core/README.md), in the `core/` submodule |
+| Core library | `librecon_fn.so`, compiled from C and AArch64 assembly |
+| JNI | `librecon.so`, connecting Android to the core |
+| App helpers and achievements | `libseedless_bridge.so` and rcheevos |
+| Display and audio | EGL/OpenGL ES and OpenSL ES |
+| Supported ABI | `arm64-v8a` |
+| Android | API 21 minimum; API 35 compile/target SDK |
+| Version | `1.0.0`, version code 110 |
+
+### Build from source
+
+Initialize the submodules from the repository root:
+
+```sh
+git submodule update --init --recursive
+```
+
+Use JDK 17, Android SDK 35, NDK `25.2.9519653` and CMake `3.22.1`. The Gradle wrapper selects Gradle `8.11.1`. Set the SDK location through `local.properties` or your Android SDK environment. The native build downloads pinned UnRAR and LZMA SDK sources with SHA-256 verification; see [third-party licenses](core/third_party/LICENSES.md).
+
+Build the debug app (`com.seedlessds.app.debug`):
+
+```sh
+./gradlew assembleDebug
+```
+
+For the signed release (`com.seedlessds.app`), configure `MELONDS_KEYSTORE`, `MELONDS_KEYSTORE_PASSWORD`, `MELONDS_KEY_ALIAS` and `MELONDS_KEY_PASSWORD` in your untracked `local.properties`, then run:
+
+```sh
+./gradlew assembleRelease
+```
+
+On Windows, use `gradlew.bat` with the same arguments. APKs are written under `app/build/outputs/apk/`. Keep signing credentials and the release keystore outside version control. The tracked debug keystore is only for debug builds.
+
+## Roadmap
+
+The reconstructed core is now built from source. Future work includes broader compatibility testing, performance improvements and continued refinement of the Android interface. A Linux frontend remains a future direction; there is no released Linux application in this repository.
+
+## Credits and distribution
+
+DraStic was created by its original authors, including Exophase. SeedlessCoreDS is reconstructed from DraStic r2.6.0.4a; this is not a claim of an independently designed core. SeedlessDS is a separate project and is not an official DraStic release.
+
+Games and original Nintendo BIOS/firmware images are not included. The app includes replacement BIOS assets. Third-party source and assets retain their respective attribution and license terms. Nintendo and game names belong to their respective owners; the project is not affiliated with Nintendo.
+
+## Current known notes
+
+- This release supports ARM64 Android devices.
+- Game compatibility, performance and dual-display behavior vary by device.
+- RetroAchievements and archive handling need further compatibility testing.
+- The interface is still being refined.
+
+## Reporting issues
+
+Include the device model, Android version, game, internal resolution, display layout, input method and whether RetroAchievements was enabled. Add reproduction steps and, where useful, screenshots or logs. Do not attach games, BIOS images, firmware or signing credentials.
+
+## License
+
+A project-wide license has not yet been selected. The included dependencies retain their own licenses; see [rcheevos](app/src/main/cpp/rcheevos/LICENSE) and the [core dependency list](core/third_party/LICENSES.md).
