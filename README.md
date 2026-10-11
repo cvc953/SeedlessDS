@@ -70,21 +70,19 @@ am start -n com.seedlessds.app/com.seedlessds.app.LaunchGame \
 
 The app recognizes `.nds`, `.dsi`, `.srl` and `.ids` game files and includes archive handling for ZIP, 7z and RAR. File recognition does not guarantee that a game or every archive layout is compatible. Device testing of the 7z/RAR paths remains in progress.
 
-### Community controller themes
-
-Touch themes can be imported from **Settings > On-screen controls > Import community theme (.zip)**. A SeedlessDS theme ZIP may contain `theme.json` at its root with fields such as `id`, `name`, `background`, `buttonColor`, `pressedColor`, `textColor`, and `assets`. The settings screen only exposes ZIP theme import and standalone background image import:
+Touch themes can be imported from **Settings > On-screen controls > Import community theme (.zip)**. The settings screen only exposes ZIP theme import and standalone background image import:
 
 You can also import only one image from **Settings > On-screen controls > Import background image**, without importing a complete theme package.
 
+```json
 
+```
 
 The imported theme is stored locally and can be selected globally or for an individual game. The background is drawn around the DS screens, while the colors style the touch buttons.
 
 Theme packages may also provide images named `a.png`, `b.png`, `x.png`, `y.png`, `l.png`, `r.png`, `start.png`, `select.png` and `dpad.png`, or list them in the `assets` object of `theme.json`. Pressed versions can use names such as `a_pressed.png` or the `pressedAssets` object. SeedlessDS switches to the pressed image while the control is held.
 
-**Legacy themes without `theme.json` are also supported:** SeedlessDS can read background images from legacy DraStic/Citra-style ZIPs by filename convention (e.g., `background.png`, `portrait`, `landscape`). If a theme ZIP does not contain `theme.json`, the app falls back to discovering background images by filename, so existing theme packages continue to work.
-
-For legacy DraStic-style ZIPs, SeedlessDS also supports DraStic sprite sheets such as `padbuttons_0.png`, `padbuttons_1.png` and `dpad_0.png` through `dpad_8.png`, as well as individual button names such as `button_a.png` / `button_a_pressed.png`. DraStic packages without a background keep the currently selected standalone background. Citra packages may provide separate `portrait` and `landscape` backgrounds; SeedlessDS switches between them when the device rotates, with the other orientation used as fallback. Layout files may be used as backgrounds in addition to their geometry role.
+For legacy DraStic-style ZIPs, SeedlessDS also supports DraStic sprite sheets such as `padbuttons_0.png`, `padbuttons_1.png` and `dpad_0.png` through `dpad_8.png`, as well as individual button names such as `button_a.png` / `button_a_pressed.png`. DraStic packages without a background keep the currently selected standalone background. Citra packages may provide separate `portrait` and `landscape` backgrounds; SeedlessDS switches between them when the device rotates, with the other orientation used as fallback. **Layout files may be used as backgrounds in addition to their geometry role.**
 
 ## How it is built
 
