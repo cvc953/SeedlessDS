@@ -74,9 +74,7 @@ Touch themes can be imported from **Settings > On-screen controls > Import commu
 
 You can also import only one image from **Settings > On-screen controls > Import background image**, without importing a complete theme package.
 
-```json
 
-```
 
 The imported theme is stored locally and can be selected globally or for an individual game. The background is drawn around the DS screens, while the colors style the touch buttons.
 
