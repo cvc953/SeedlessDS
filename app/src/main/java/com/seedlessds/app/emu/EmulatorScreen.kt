@@ -958,11 +958,7 @@ private fun ControlBackground(
         if (image == null) return@Canvas
         val screens = listOf(glView.topScreenRect, glView.bottomScreenRect)
         val active = screens.filter { it.size >= 4 && it[2] > 0f && it[3] > 0f }
-        val valid = active.all { rect ->
-            rect[0] >= 0f && rect[1] >= 0f &&
-                rect[0] + rect[2] <= size.width && rect[1] + rect[3] <= size.height
-        }
-        if (!valid || active.isEmpty()) return@Canvas
+        if (active.isEmpty()) return@Canvas
 
         val outside = Path().apply {
             fillType = PathFillType.EvenOdd
